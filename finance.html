@@ -196,7 +196,16 @@
           <input class="form-input" id="vf-price" type="number" placeholder="Price (£) *">
           <input class="form-input" id="vf-date" type="date">
           <input class="form-input full" id="vf-notes" placeholder="Notes (optional)">
-          <label class="checkbox-label full"><input type="checkbox" id="vf-pending"> Pending / date not confirmed</label>
+          <select class="form-input full" id="vf-status" onchange="togglePaidDate('vf')">
+            <option value="paid">✅ Paid</option>
+            <option value="invoiced">🧾 Invoiced</option>
+            <option value="pending_payment">⏳ Pending Payment</option>
+            <option value="cancelled">❌ Cancelled</option>
+          </select>
+          <div class="full" id="vf-paid-date-wrap">
+            <input class="form-input" id="vf-paid-date" type="date" placeholder="Date paid" style="width:100%">
+          </div>
+          <label class="checkbox-label full"><input type="checkbox" id="vf-pending"> Date not confirmed</label>
         </div>
         <div class="form-actions">
           <button class="btn-primary" onclick="addVideo()">Save</button>
@@ -405,6 +414,39 @@ function clientTag(c) {
 }
 const CAT_TAG = {Housing:"tag-purple",Food:"tag-green",Transport:"tag-blue",Software:"tag-blue",Equipment:"tag-yellow",Subscriptions:"tag-blue",Health:"tag-green",Entertainment:"tag-yellow",Education:"tag-purple",Other:"tag-blue"};
 
+const STATUS_CYCLE = ['paid','invoiced','pending_payment','cancelled'];
+const STATUS_LABEL = {paid:'✅ Paid', invoiced:'🧾 Invoiced', pending_payment:'⏳ Pending', cancelled:'❌ Cancelled'};
+const STATUS_STYLE = {
+  paid:            'background:#052e16;color:#4ade80',
+  invoiced:        'background:#0c1a3a;color:#60a5fa',
+  pending_payment: 'background:#1a1100;color:#fbbf24',
+  cancelled:       'background:#1f0a0a;color:#f87171',
+};
+function statusBadge(v) {
+  const s = v.status || 'paid';
+  const paidInfo = s === 'paid' && v.paidDate
+    ? `<span style="font-size:10px;color:#6b7280;margin-left:5px">paid ${new Date(v.paidDate).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})}</span>`
+    : '';
+  return `<span class="tag" style="${STATUS_STYLE[s]};cursor:pointer;user-select:none" onclick="cycleStatus('${v.id}')" title="Tap to change">${STATUS_LABEL[s]}</span>${paidInfo}`;
+}
+function togglePaidDate(prefix) {
+  const status = document.getElementById(prefix+'-status').value;
+  const wrap = document.getElementById(prefix+'-paid-date-wrap');
+  if(wrap) wrap.style.display = status === 'paid' ? 'block' : 'none';
+}
+function cycleStatus(id) {
+  videos = videos.map(v => {
+    if(v.id !== id) return v;
+    const cur = v.status || 'paid';
+    const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur)+1) % STATUS_CYCLE.length];
+    // If cycling to paid and no paidDate, set today
+    const paidDate = next === 'paid' ? (v.paidDate || new Date().toISOString().split('T')[0]) : v.paidDate;
+    return {...v, status: next, paidDate};
+  });
+  save('fd_videos', videos);
+  renderEarnings();
+}
+
 // ─── TAB SWITCHING ─────────────────────────────────────────────────────────────
 let activeTab = 0;
 function switchTab(i) {
@@ -506,8 +548,12 @@ function renderEarnings() {
         return `<div class="vid-row">
           <div class="vid-date">${dStr}</div>
           <div>
-            <div class="vid-title">${esc(v.title)} ${v.pending?'<span class="tag tag-yellow">pending</span>':''}</div>
+            <div class="vid-title">${esc(v.title)}</div>
             ${v.client&&v.client!=='Unknown'?`<div class="vid-client">${esc(v.client)}</div>`:''}
+            <div style="margin-top:4px;display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+              ${statusBadge(v)}
+              ${v.pending?'<span class="tag tag-yellow">date TBC</span>':''}
+            </div>
             ${v.notes?`<div class="vid-note">${esc(v.notes)}</div>`:''}
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
@@ -543,7 +589,10 @@ function renderEarnings() {
         <span style="color:#6b7280;font-size:11px;font-family:monospace;padding-top:2px">${dStr}</span>
         <div>
           <span style="font-weight:600;color:#e2e8f0;font-size:13px">${esc(v.title)}</span>
-          ${v.pending?'<span class="tag tag-yellow" style="margin-left:5px">pending</span>':''}
+          <div style="margin-top:4px;display:flex;gap:5px;flex-wrap:wrap">
+            ${statusBadge(v)}
+            ${v.pending?'<span class="tag tag-yellow">date TBC</span>':''}
+          </div>
           ${v.notes?`<div style="font-size:11px;color:#6b7280;font-style:italic;margin-top:2px">${esc(v.notes)}</div>`:''}
         </div>
         ${clientTag(v.client)}
@@ -581,11 +630,14 @@ function addVideo() {
   const title = document.getElementById('vf-title').value.trim();
   const price = parseFloat(document.getElementById('vf-price').value);
   if(!title || isNaN(price)) return;
+  const status = document.getElementById('vf-status').value;
   const v = {
     id: 'u'+Date.now(), title,
     client: document.getElementById('vf-client').value.trim() || 'Unknown',
     price, date: document.getElementById('vf-date').value,
     notes: document.getElementById('vf-notes').value.trim(),
+    status,
+    paidDate: status === 'paid' ? (document.getElementById('vf-paid-date').value || document.getElementById('vf-date').value) : '',
     pending: document.getElementById('vf-pending').checked,
   };
   videos.push(v);
@@ -595,6 +647,9 @@ function addVideo() {
   document.getElementById('vf-price').value='';
   document.getElementById('vf-notes').value='';
   document.getElementById('vf-pending').checked=false;
+  document.getElementById('vf-status').value='paid';
+  document.getElementById('vf-paid-date').value='';
+  document.getElementById('vf-paid-date-wrap').style.display='block';
   document.getElementById('add-video-form').style.display='none';
   renderEarnings();
 }
