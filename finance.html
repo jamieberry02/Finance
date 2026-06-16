@@ -360,18 +360,16 @@ const SEED_VIDEOS = [
 ];
 
 const SEED_ASSETS = [
-  {id:1,label:"Main Savings",type:"Cash / Savings",value:8500},
-  {id:2,label:"S&P 500 ETF",type:"Investments",value:12000},
-  {id:3,label:"Bitcoin",type:"Crypto",value:2200},
+  {id:1,label:"Bitcoin",type:"Crypto",value:340},
+  {id:2,label:"Stocks & Shares ISA",type:"Investments",value:3400},
 ];
-const SEED_LIABS = [
-  {id:1,label:"Student Loan",type:"Student Loan",value:4500},
-];
+const SEED_LIABS = [];
 const SEED_EXPENSES = [
-  {id:1,desc:"Adobe Creative Suite",category:"Software",amount:54.99,date:"2026-06-01",recurring:true},
-  {id:2,desc:"Studio Rent",category:"Housing",amount:1200,date:"2026-06-01",recurring:true},
-  {id:3,desc:"Grocery Run",category:"Food",amount:87.50,date:"2026-06-08",recurring:false},
-  {id:4,desc:"External SSD",category:"Equipment",amount:139,date:"2026-06-05",recurring:false},
+  {id:1,desc:"Adobe Creative Cloud",category:"Software",amount:32,date:"2026-06-16",recurring:true},
+  {id:2,desc:"Heroez Gym",category:"Health",amount:60,date:"2026-06-16",recurring:true},
+  {id:3,desc:"X Verified",category:"Subscriptions",amount:10,date:"2026-06-16",recurring:true},
+  {id:4,desc:"Spotify",category:"Subscriptions",amount:12,date:"2026-06-16",recurring:true},
+  {id:5,desc:"Rent",category:"Housing",amount:350,date:"2026-06-16",recurring:true},
 ];
 
 // ─── STORAGE ───────────────────────────────────────────────────────────────────
@@ -466,10 +464,22 @@ function renderEarnings() {
   const mTotal = thisMonthVids.reduce((s,v)=>s+v.price,0);
   const yTotal = thisYearVids.reduce((s,v)=>s+v.price,0);
 
+  // UK financial year: 6 April to 5 April
+  // If current month is Jan-Mar (0-2), FY started April 6 of previous year
+  // Otherwise FY started April 6 of current year
+  const fyStart = CM < 3 || (CM === 3 && now.getDate() < 6)
+    ? new Date(CY-1, 3, 6)   // Apr 6 last year
+    : new Date(CY,   3, 6);   // Apr 6 this year
+  const fyEnd   = new Date(fyStart.getFullYear()+1, 3, 5, 23, 59, 59);
+  const fyStartYear = fyStart.getFullYear();
+  const fyEndYear   = fyEnd.getFullYear();
+  const fyVids  = confirmed.filter(v=>{ const d=new Date(v.date); return d>=fyStart && d<=fyEnd; });
+  const fyTotal = fyVids.reduce((s,v)=>s+v.price,0);
+
   document.getElementById('earn-stats').innerHTML = `
     <div class="stat-card accent"><div class="stat-label">All Time (confirmed)</div><div class="stat-value">${gbp(allTime)}</div><div class="stat-sub">${confirmed.length} videos</div></div>
     <div class="stat-card"><div class="stat-label">${MONTHS[CM]} ${CY}</div><div class="stat-value">${gbp(mTotal)}</div><div class="stat-sub">${thisMonthVids.length} videos</div></div>
-    <div class="stat-card"><div class="stat-label">${CY} Total</div><div class="stat-value">${gbp(yTotal)}</div><div class="stat-sub">${thisYearVids.length} videos</div></div>
+    <div class="stat-card" style="background:linear-gradient(135deg,#0f4c35,#064e3b);border:none"><div class="stat-label" style="color:rgba(255,255,255,0.7)">Tax Year ${fyStartYear}/${String(fyEndYear).slice(2)}</div><div class="stat-value" style="color:#4ade80">${gbp(fyTotal)}</div><div class="stat-sub" style="color:rgba(255,255,255,0.6)">${fyVids.length} videos · 6 Apr ${fyStartYear}–5 Apr ${fyEndYear}</div></div>
     ${pendingTotal>0?`<div class="stat-card warn"><div class="stat-label">Pending / TBC</div><div class="stat-value">${gbp(pendingTotal)}</div><div class="stat-sub">${pending.length} jobs</div></div>`:''}
   `;
 
