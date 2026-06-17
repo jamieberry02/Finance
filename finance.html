@@ -552,7 +552,7 @@ function renderEarnings() {
             ${v.client&&v.client!=='Unknown'?`<div class="vid-client">${esc(v.client)}</div>`:''}
             <div style="margin-top:4px;display:flex;gap:5px;align-items:center;flex-wrap:wrap">
               ${statusBadge(v)}
-              ${v.pending?'<span class="tag tag-yellow">date TBC</span>':''}
+              ${v.pending&&(v.status||'paid')!=='paid'?'<span class="tag tag-yellow">date TBC</span>':''}
             </div>
             ${v.notes?`<div class="vid-note">${esc(v.notes)}</div>`:''}
           </div>
@@ -591,7 +591,7 @@ function renderEarnings() {
           <span style="font-weight:600;color:#e2e8f0;font-size:13px">${esc(v.title)}</span>
           <div style="margin-top:4px;display:flex;gap:5px;flex-wrap:wrap">
             ${statusBadge(v)}
-            ${v.pending?'<span class="tag tag-yellow">date TBC</span>':''}
+            ${v.pending&&(v.status||'paid')!=='paid'?'<span class="tag tag-yellow">date TBC</span>':''}
           </div>
           ${v.notes?`<div style="font-size:11px;color:#6b7280;font-style:italic;margin-top:2px">${esc(v.notes)}</div>`:''}
         </div>
